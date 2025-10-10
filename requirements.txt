@@ -1,0 +1,8 @@
+# Data handling
+pandas
+duckdb
+pandasql
+
+# Google Gemini API
+google-genai
+

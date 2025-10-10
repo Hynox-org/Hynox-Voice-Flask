@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+
+# Ignore specific Python files
+Edge_case_detector.py
+Sql_generation.py
+test.py
+
+# Ignore API Keys
+API_key.txt
