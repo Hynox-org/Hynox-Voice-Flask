@@ -10,6 +10,7 @@ venv/
 # Ignore specific Python files
 Edge_case_detector.py
 Sql_generation.py
+sql_query_output.json
 test.py
 
 # Ignore API Keys

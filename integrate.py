@@ -4,18 +4,11 @@ import pandas as pd
 from query_processing import process_query
 from process_sql import execute_sql_query  
 from API_config import GEMINI_API_KEY
+from visualization import get_visualization_json
+
 
 def process_data(chat_context, file_url):
-    """
-    Process the user query and CSV file, returning the result.
-    
-    Args:
-        chat_context (str): The user query.
-        file_url (str): URL to the CSV file.
-    
-    Returns:
-        dict: Contains original query, refined query, status, SQL query, and execution result (if successful).
-    """
+   
     # --- Original debug prints ---
     print("Processing in integrate.py...")
     print("Chat Context:", chat_context)
@@ -56,8 +49,6 @@ def process_data(chat_context, file_url):
     print("\n\nresult\n\n",result)
     # --- If SQL is valid, execute it ---
     if response.get("status") and response.get("sql_query"):
-
-        
         sql_query = response["sql_query"]["SQL"]  # Extract SQL string
 
         # Execute SQL query using pandasql or your execute_sql_query function
@@ -70,6 +61,8 @@ def process_data(chat_context, file_url):
             print(f"✅ SQL result also saved to {output_path}")
 
             result["execution_result"] = result_df.to_dict(orient="records")
+            result_visualization_type = get_visualization_json(api_key, result["refined_query"], result["execution_result"])
+            result["execution_result"]=result_visualization_type
         else:
             result["execution_result"] = "SQL execution failed."
 
@@ -77,5 +70,6 @@ def process_data(chat_context, file_url):
     else:
         result["execution_result"] = "Query cannot be executed."
     print("EXECUTED RESULT:\n\n",result["execution_result"])
+    
 
     return result["execution_result"]
