@@ -5,7 +5,7 @@ __pycache__/
 *.pyd
 
 # Virtual environment
-venv/
+.venv/
 
 # Ignore specific Python files
 Edge_case_detector.py
