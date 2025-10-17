@@ -7,9 +7,43 @@ class GeminiLLM:
         self.client = genai.Client(api_key=api_key)
         self.model = model
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str) -> str: 
         response = self.client.models.generate_content(model=self.model, contents=prompt)
         return response.text.strip()
+
+
+class UserQueryCheckAgent:
+    def __init__(self, df: pd.DataFrame, dataset_columns: list, llm: GeminiLLM = None):
+        self.df = df
+        self.dataset_columns = dataset_columns
+        self.llm = llm  # Optional LLM for enhanced query understanding
+
+    def is_valid_query(self, user_query: str) -> bool:
+        """
+        Check if the user query is relevant to the dataset:
+        - Uses dataset columns
+        - If literal values are mentioned, they exist in dataset
+        Returns True if valid, False otherwise
+        """
+        query_lower = user_query.lower()
+        # Check columns
+        if not any(col.lower() in query_lower for col in self.dataset_columns):
+            # Optional: use LLM to interpret natural language reference to columns
+            if self.llm:
+                prompt = f"""
+                Task: Determine if the user query is relevant to the dataset columns.
+
+                Dataset columns: {', '.join(self.dataset_columns)}
+
+                User query: "{user_query}"
+
+                Return ONLY "True" if query is relevant, "False" otherwise.
+                """
+                llm_response = self.llm.generate(prompt).strip().lower()
+                return llm_response == "true"
+            return False
+
+        return True
 
 
 # Query Refinement Agent
@@ -257,6 +291,14 @@ class SQLGeneratorAgent:
 # Main processing function
 def process_query(api_key: str, dataset_columns: list, df: pd.DataFrame, user_query: str):
     gemini_llm = GeminiLLM(api_key=api_key)
+    user_query_checker = UserQueryCheckAgent(df=df, dataset_columns=dataset_columns, llm=gemini_llm)
+    if not user_query_checker.is_valid_query(user_query):
+        return {
+            "original_query": user_query,
+            "refined_query": None,
+            "status": False,
+            "sql_query": None
+        }
     refine_agent = RefineQueryAgent(llm=gemini_llm)
     sql_check_agent = SQLCheckAgent(llm=gemini_llm, dataset_columns=dataset_columns)
     sql_generator_agent = SQLGeneratorAgent(
@@ -284,3 +326,4 @@ def process_query(api_key: str, dataset_columns: list, df: pd.DataFrame, user_qu
             "status": False,
             "sql_query": None
         }
+
