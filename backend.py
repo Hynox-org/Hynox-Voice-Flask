@@ -7,8 +7,14 @@ from integrate import process_data  # ✅ Import your processing function
 app = Flask(__name__)
 
 # Get CORS origins from environment variable, with a fallback for development
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(',')
-CORS(app, origins=CORS_ORIGINS)
+CORS(app, resources={r"/*": {"origins": ["https://voice.hynox.in", "http://localhost:3000"]}})
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers.add('Access-Control-Allow-Origin', 'https://voice.hynox.in')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 @app.route('/backend', methods=['POST'])
 def backend():
