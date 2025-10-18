@@ -1,10 +1,14 @@
 # backend.py
 from flask import Flask, request, jsonify
+import os
 from flask_cors import CORS
 from integrate import process_data  # ✅ Import your processing function
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+
+# Get CORS origins from environment variable, with a fallback for development
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(',')
+CORS(app, origins=CORS_ORIGINS)
 
 @app.route('/backend', methods=['POST'])
 def backend():
@@ -35,4 +39,4 @@ def backend():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "True", port=int(os.environ.get("FLASK_PORT", 5000)))
