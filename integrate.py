@@ -1,20 +1,43 @@
-
 # integrate.py
 import pandas as pd
-from query_processing import process_query
-from process_sql import execute_sql_query  
+from query_processing import process_query, GeminiLLM
+from process_sql import execute_sql_query
 from API_config import GEMINI_API_KEY
 from visualization import get_visualization_json
 
+def _create_response(status, summary=None, data=None, table=None, error=None):
+    """Helper function to create a standardized response object."""
+    return {
+        "status": status,
+        "summary": summary,
+        "data": data,
+        "table": table,
+        "error": error
+    }
+
+def generate_conversational_response(api_key, query):
+    gemini_llm = GeminiLLM(api_key=api_key)
+    prompt = f"The user sent the following message: '{query}'. This is not a query that can be answered from the available data. Provide a short, friendly, conversational response. If it's a question you can't answer, say you can't answer it from the data. If it's a statement of gratitude, respond politely."
+    response = gemini_llm.generate(prompt)
+    return _create_response(status="conversational", summary=response)
+
+def handle_greeting(query):
+    greetings = ["hi", "hello", "greetings", "good morning", "good afternoon", "good evening"]
+    if query.lower().strip() in greetings:
+        response_text = f"{query.capitalize()}, how can I help you?"
+        return _create_response(status="conversational", summary=response_text)
+    return None
 
 def process_data(chat_context, file_url):
-   
-    # --- Original debug prints ---
     print("Processing in integrate.py...")
+    
+    greeting_response = handle_greeting(chat_context)
+    if greeting_response:
+        return greeting_response
+
     print("Chat Context:", chat_context)
     print("File URL:", file_url)
 
-    # Use GEMINI API key
     api_key = GEMINI_API_KEY
 
     try:
@@ -23,9 +46,17 @@ def process_data(chat_context, file_url):
         elif file_url.lower().endswith('.csv'):
             df = pd.read_csv(file_url, encoding='latin1')
         else:
-            return {"error": "Unsupported file format. Only CSV and Excel files are supported."}
+            return _create_response(
+                status="error",
+                summary="Unsupported file format.",
+                error="Unsupported file format. Only CSV and Excel files are supported."
+            )
     except Exception as e:
-        return {"error": f"Failed to load file from URL: {e}"}
+        return _create_response(
+            status="error",
+            summary="Failed to load file from URL.",
+            error=f"Failed to load file from URL: {e}"
+        )
 
     columns = df.columns.tolist()
     table_name = "df"
@@ -38,38 +69,34 @@ def process_data(chat_context, file_url):
         user_query=chat_context
     )
 
-    # Prepare result dict
-    result = {
-        "original_query": response.get("original_query"),
-        "refined_query": response.get("refined_query"),
-        "status": response.get("status"),
-        "sql_query": response.get("sql_query"),
-        "execution_result": None
-    }
-    print("\n\nresult\n\n",result)
     # --- If SQL is valid, execute it ---
     if response.get("status") and response.get("sql_query"):
-        sql_query = response["sql_query"]["SQL"]  # Extract SQL string
+        sql_query = response["sql_query"]["SQL"]
 
-        # Execute SQL query using pandasql or your execute_sql_query function
         result_df = execute_sql_query(df, sql_query, table_name=table_name)
 
-        if result_df is not None:
-            # --- Optionally save to file ---
-            output_path = "sql_query_output.json"
-            result_df.to_json(output_path, orient="records", indent=4)
-            print(f"✅ SQL result also saved to {output_path}")
+        if result_df is not None and not result_df.empty:
+            # --- Get visualization info ---
+            visualization_json = get_visualization_json(api_key, response.get("refined_query"), result_df.to_dict(orient="records"))
+            
+            # --- Create table object ---
+            table_json = {
+                "columns": result_df.columns.tolist(),
+                "rows": result_df.to_dict(orient="records")
+            }
 
-            result["execution_result"] = result_df.to_dict(orient="records")
-            result_visualization_type = get_visualization_json(api_key, result["refined_query"], result["execution_result"])
-            result["execution_result"]=result_visualization_type
+            return _create_response(
+                status="success",
+                summary=response.get("refined_query", "Query executed successfully."),
+                data=visualization_json,
+                table=table_json
+            )
         else:
-            result["execution_result"] = "SQL execution failed."
-
-
+            return _create_response(
+                status="error",
+                summary="SQL execution failed or returned no data.",
+                error="SQL execution failed or the query returned an empty result set."
+            )
     else:
-        result["execution_result"] = "Query cannot be executed."
-    print("EXECUTED RESULT:\n\n",result["execution_result"])
-    
-
-    return result["execution_result"]
+        # --- If no SQL, generate conversational response ---
+        return generate_conversational_response(api_key, chat_context)
