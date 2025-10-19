@@ -2,7 +2,10 @@
 pandas
 duckdb
 pandasql
+flask
+flask_cors
 
 # Google Gemini API
 google-genai
-
+python-dotenv
+gunicorn

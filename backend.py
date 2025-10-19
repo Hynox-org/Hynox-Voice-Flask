@@ -1,10 +1,13 @@
 # backend.py
 from flask import Flask, request, jsonify
+import os
 from flask_cors import CORS
 from integrate import process_data  # ✅ Import your processing function
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+
+# Get CORS origins from environment variable, with a fallback for development
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/backend', methods=['POST'])
 def backend():
@@ -18,13 +21,21 @@ def backend():
 
     # ✅ Send the data to integrate.py
     try:
-        # Process data safely
-        result = process_data(chat_context, file_url)
-        return jsonify({"response": result})
+        # Process data safely and get the standardized response
+        response_data = process_data(chat_context, file_url)
+        print("Response from integrate.py:", response_data)
+        return jsonify(response_data)
     except Exception as e:
         print("Error in backend:", e)
-        return jsonify({"error": str(e)}), 500
+        # Return a standardized error response
+        return jsonify({
+            "status": "error",
+            "summary": "An unexpected error occurred in the backend.",
+            "data": None,
+            "table": None,
+            "error": str(e)
+        }), 500
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "True", port=int(os.environ.get("FLASK_PORT", 5000)))

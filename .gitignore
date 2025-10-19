@@ -5,8 +5,9 @@ __pycache__/
 *.pyd
 
 # Virtual environment
-venv/
-
+.venv/
+test_backend.py
+.env.example
 # Ignore specific Python files
 Edge_case_detector.py
 Sql_generation.py
