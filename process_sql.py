@@ -20,6 +20,7 @@ def execute_sql_query(df: pd.DataFrame, sql_query: str, table_name: str = "df") 
         query_result = sqldf(sql_query, {table_name: df})
         if not query_result.empty:
             print("✅ Query executed successfully with pandasql.")
+            query_result = query_result.round(2)
             return query_result
         else:
             print("⚠️ Empty result from pandasql — trying DuckDB.")
@@ -32,6 +33,7 @@ def execute_sql_query(df: pd.DataFrame, sql_query: str, table_name: str = "df") 
         query_result = duckdb.sql(sql_query).df()
         if not query_result.empty:
             print("✅ Query executed successfully with DuckDB.")
+            query_result = query_result.round(2)
             return query_result
         else:
             print("⚠️ Empty result from DuckDB")
