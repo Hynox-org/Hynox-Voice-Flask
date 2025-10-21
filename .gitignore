@@ -8,6 +8,7 @@ __pycache__/
 .venv/
 test_backend.py
 .env.example
+.env
 # Ignore specific Python files
 Edge_case_detector.py
 Sql_generation.py

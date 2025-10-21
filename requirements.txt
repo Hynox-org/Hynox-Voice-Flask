@@ -4,6 +4,7 @@ duckdb
 pandasql
 flask
 flask_cors
+dotenv
 
 # Google Gemini API
 google-genai
