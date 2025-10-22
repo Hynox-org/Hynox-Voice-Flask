@@ -15,6 +15,43 @@ def _create_response(status, summary=None, data=None, table=None, error=None):
         "error": error
     }
 
+def _transform_data_for_charts(data):
+    """
+    Transforms data from SQL result format to a generic chart-compatible format.
+    The first non-numeric column is mapped to 'name', and subsequent numeric columns
+    are mapped to 'value1', 'value2', etc.
+    """
+    if not data:
+        return []
+
+    df = pd.DataFrame(data)
+    transformed_data = []
+
+    # Identify columns for 'name' and 'values'
+    name_column = None
+    value_columns = []
+
+    for col in df.columns:
+        # Check if the column is numeric
+        is_numeric = pd.to_numeric(df[col], errors='coerce').notna().all()
+        
+        if not is_numeric and name_column is None:
+            name_column = col
+        elif is_numeric:
+            value_columns.append(col)
+
+    for _, row in df.iterrows():
+        new_item = {}
+        if name_column:
+            new_item['name'] = row[name_column]
+        
+        for i, val_col in enumerate(value_columns):
+            new_item[f'value{i+1}'] = row[val_col]
+        
+        transformed_data.append(new_item)
+        
+    return transformed_data
+
 def generate_conversational_response(api_key, query):
     gemini_llm = GeminiLLM(api_key=api_key)
     prompt = f"The user sent the following message: '{query}'. This is not a query that can be answered from the available data. Provide a short, friendly, conversational response. If it's a question you can't answer, say you can't answer it from the data. If it's a statement of gratitude, respond politely."
@@ -76,8 +113,11 @@ def process_data(chat_context, file_url):
         result_df = execute_sql_query(df, sql_query, table_name=table_name)
 
         if result_df is not None and not result_df.empty:
+            # Transform data for visualization
+            transformed_chart_data = _transform_data_for_charts(result_df.to_dict(orient="records"))
+            
             # --- Get visualization info ---
-            visualization_json = get_visualization_json(api_key, response.get("refined_query"), result_df.to_dict(orient="records"))
+            visualization_json = get_visualization_json(api_key, response.get("refined_query"), transformed_chart_data)
             
             # --- Create table object ---
             table_json = {
