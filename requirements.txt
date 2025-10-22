@@ -5,6 +5,7 @@ pandasql
 flask
 flask_cors
 dotenv
+openpyxl
 
 # Google Gemini API
 google-genai
